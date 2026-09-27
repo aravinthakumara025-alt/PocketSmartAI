@@ -19,7 +19,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 log=logging.getLogger("pocketsmart")
 ROOT=Path(__file__).parent
-UPLOAD=ROOT/"uploads"
+UPLOAD=Path(os.getenv("UPLOAD_DIR", str(ROOT/"uploads")))
 SECRET=os.getenv("SECRET_KEY", "dev-only-change-me")
 ALG=os.getenv("ALGORITHM","HS256")
 EXPIRE=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES","60"))
@@ -33,7 +33,7 @@ def startup():
   if SECRET=="dev-only-change-me" or len(SECRET)<32:raise RuntimeError("Production requires a strong SECRET_KEY.")
   if os.getenv("MOCK_AI","false").lower()!="true" and not os.getenv("GROQ_API_KEY"):raise RuntimeError("Production requires GROQ_API_KEY when MOCK_AI is disabled.")
   if os.getenv("COOKIE_SECURE","false").lower()!="true":raise RuntimeError("Production requires COOKIE_SECURE=true behind HTTPS.")
- UPLOAD.mkdir(exist_ok=True);Base.metadata.create_all(bind=engine)
+ UPLOAD.mkdir(parents=True,exist_ok=True);Base.metadata.create_all(bind=engine)
  log.info("PocketSmart AI starting... Database: OK | Templates: OK | Static files: OK | Groq configuration: %s | Mock AI: %s","OK" if os.getenv("GROQ_API_KEY") else "NOT CONFIGURED",os.getenv("MOCK_AI","false"))
 def hash_password(p):
  salt=secrets.token_bytes(16);derived=hashlib.scrypt(p.encode(),salt=salt,n=2**14,r=8,p=1)
