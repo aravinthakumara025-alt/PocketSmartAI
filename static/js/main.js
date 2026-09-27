@@ -1,0 +1,5 @@
+﻿const toggle=document.querySelector('.menu-toggle'),nav=document.querySelector('#nav');
+if(toggle&&nav)toggle.addEventListener('click',()=>{const open=toggle.getAttribute('aria-expanded')==='true';toggle.setAttribute('aria-expanded',String(!open));nav.classList.toggle('open',!open)});
+document.querySelectorAll('form[data-validate]').forEach(form=>form.addEventListener('submit',e=>{if(!form.reportValidity()){e.preventDefault();return}const btn=form.querySelector('button[type=submit]');if(btn){btn.disabled=true;btn.dataset.label=btn.innerHTML;btn.innerHTML='<span class="spinner"></span> Building your plan…'}}));
+document.querySelectorAll('form[data-confirm]').forEach(form=>form.addEventListener('submit',e=>{if(!confirm(form.dataset.confirm))e.preventDefault()}));
+const upload=document.querySelector('[data-image-upload]'),preview=document.querySelector('.image-preview');if(upload&&preview)upload.addEventListener('change',()=>{const f=upload.files[0];if(!f){preview.hidden=true;return}preview.src=URL.createObjectURL(f);preview.hidden=false});
