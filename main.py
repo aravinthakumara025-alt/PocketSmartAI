@@ -13,7 +13,7 @@ from models import User, Recommendation
 from services.home_service import generate_home_plan
 from services.party_service import generate_party_plan
 from services.jewelry_service import generate_jewelry_plan
-from services.groq_service import AIServiceError
+from services.groq_service import AIServiceError, available_providers, configured_provider
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -31,10 +31,10 @@ templates=Jinja2Templates(directory=ROOT/"templates")
 def startup():
  if os.getenv("APP_ENV","development").lower()=="production":
   if SECRET=="dev-only-change-me" or len(SECRET)<32:raise RuntimeError("Production requires a strong SECRET_KEY.")
-  if os.getenv("MOCK_AI","false").lower()!="true" and not os.getenv("GROQ_API_KEY"):raise RuntimeError("Production requires GROQ_API_KEY when MOCK_AI is disabled.")
+  if os.getenv("MOCK_AI","false").lower()!="true" and not any(available_providers().values()):raise RuntimeError("Production requires GROQ_API_KEY or GEMINI_API_KEY when MOCK_AI is disabled.")
   if os.getenv("COOKIE_SECURE","false").lower()!="true":raise RuntimeError("Production requires COOKIE_SECURE=true behind HTTPS.")
  UPLOAD.mkdir(parents=True,exist_ok=True);Base.metadata.create_all(bind=engine)
- log.info("PocketSmart AI starting... Database: OK | Templates: OK | Static files: OK | Groq configuration: %s | Mock AI: %s","OK" if os.getenv("GROQ_API_KEY") else "NOT CONFIGURED",os.getenv("MOCK_AI","false"))
+ log.info("PocketSmart AI starting... Database: OK | Templates: OK | Static files: OK | Groq: %s | Gemini: %s | Mock AI: %s","OK" if available_providers()["groq"] else "NOT CONFIGURED","OK" if available_providers()["gemini"] else "NOT CONFIGURED",os.getenv("MOCK_AI","false"))
 def hash_password(p):
  salt=secrets.token_bytes(16);derived=hashlib.scrypt(p.encode(),salt=salt,n=2**14,r=8,p=1)
  return salt.hex()+":"+derived.hex()
@@ -121,10 +121,10 @@ FORMS={"home":{"title":"Home Interior Budget Planner","subtitle":"Shape a comfor
 @app.get("/{kind}-planner",response_class=HTMLResponse)
 def planner(request:Request,kind:str,db:Session=Depends(get_db)):
  if kind not in FORMS:raise HTTPException(404)
- required(request,db);return page(request,"planner.html",db,kind=kind,form=FORMS[kind])
+ required(request,db);return page(request,"planner.html",db,kind=kind,form=FORMS[kind],ai_provider=configured_provider())
 
 def collect(kind,form):
- out={k:v for k,v in form.items() if k not in {"csrf","rooms","needs"}}
+ out={k:v for k,v in form.items() if k not in {"csrf","rooms","needs","ai_provider"}}
  if kind=="home":out["rooms"]=form.getlist("rooms")
  if kind=="party":out["needs"]=form.getlist("needs")
  try:
@@ -137,7 +137,9 @@ def collect(kind,form):
  return out
 async def generate(request,kind,db):
  u=required(request,db);form=await request.form();data=collect(kind,form)
+ provider=(form.get("ai_provider") or configured_provider()).strip().lower()
  try:
+  if provider not in {"groq","gemini"}:raise ValueError("Choose a supported AI model.")
   image_path=None
   if kind=="jewelry":
    upload=form.get("outfit_image")
@@ -152,11 +154,11 @@ async def generate(request,kind,db):
     except Exception:raise ValueError("The uploaded file is not a valid image.")
     if im.format not in ("JPEG","PNG","WEBP") or {".jpg":"JPEG",".jpeg":"JPEG",".png":"PNG",".webp":"WEBP"}.get(ext)!=im.format:raise ValueError("The file extension does not match a supported image format.")
     image_path=str(UPLOAD/(secrets.token_hex(16)+ext));Path(image_path).write_bytes(content);data["image_path"]=image_path
-  result={"home":generate_home_plan,"party":generate_party_plan,"jewelry":generate_jewelry_plan}[kind](data)
+  result={"home":generate_home_plan,"party":generate_party_plan,"jewelry":generate_jewelry_plan}[kind](data,provider)
   rec=Recommendation(user_id=u.id,planner_type=kind,input_data=json.dumps(data),result_data=json.dumps(result));db.add(rec);db.commit();db.refresh(rec)
   return RedirectResponse(f"/recommendation/{rec.id}",303)
- except AIServiceError as e:return page(request,"planner.html",db,kind=kind,form=FORMS[kind],error=str(e))
- except ValueError as e:return page(request,"planner.html",db,kind=kind,form=FORMS[kind],error=str(e))
+ except AIServiceError as e:return page(request,"planner.html",db,kind=kind,form=FORMS[kind],error=str(e),ai_provider=provider if provider in {"groq","gemini"} else configured_provider())
+ except ValueError as e:return page(request,"planner.html",db,kind=kind,form=FORMS[kind],error=str(e),ai_provider=provider if provider in {"groq","gemini"} else configured_provider())
 @app.post("/generate-home")
 async def gen_home(request:Request,db:Session=Depends(get_db)):return await generate(request,"home",db)
 @app.post("/generate-party")

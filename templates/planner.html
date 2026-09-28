@@ -1,1 +1,39 @@
-﻿{% extends "base.html" %}{% block title %}{{ form.title }} — PocketSmart{% endblock %}{% block content %}<section class="planner-shell"><div class="wrap narrow"><a class="back-link" href="/dashboard">← Dashboard</a><span class="eyebrow">{{ kind|upper }} PLANNER</span><h1>{{ form.title }}</h1><p class="lead">{{ form.subtitle }}</p>{% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}<form class="form-card" method="post" action="/generate-{{ kind }}" enctype="multipart/form-data" data-validate>{% for field,label,typ,opts in form.fields %}<fieldset class="field">{% if typ=='checks' %}<legend>{{ label }}</legend><div class="check-grid">{% for choice in opts.split('|') %}<label class="check-option"><input type="checkbox" name="{{ 'rooms' if kind=='home' else 'needs' }}" value="{{ choice }}"><span>{{ choice }}</span></label>{% endfor %}</div>{% elif typ=='select' %}<label>{{ label }}<select name="{{ field }}" required><option value="">Select one</option>{% for choice in opts.split('|') %}<option>{{ choice }}</option>{% endfor %}</select></label>{% elif typ=='textarea' %}<label>{{ label }}<textarea name="{{ field }}" rows="4" maxlength="1000" placeholder="Share any details that will help shape your plan"></textarea></label>{% else %}<label>{{ label }}<input name="{{ field }}" type="{{ typ }}" {{ opts|safe }} {% if field=='budget' %}placeholder="e.g. 50000"{% endif %}></label>{% endif %}</fieldset>{% endfor %}{% if kind=='jewelry' %}<fieldset class="field"><label for="outfit">Outfit image (optional)</label><input id="outfit" type="file" name="outfit_image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" data-image-upload><small>JPG, PNG or WEBP, up to 5 MB.</small><img class="image-preview" alt="Preview of selected outfit" hidden></fieldset>{% endif %}<div class="form-foot"><p>Prices are planning estimates, not live offers.</p><button class="button primary" type="submit">{{ "Get recommendations" if kind=='jewelry' else "Generate recommendations" }} <span>→</span></button></div></form></div></section>{% endblock %}
+{% extends "base.html" %}
+{% block title %}{{ form.title }} — PocketSmart{% endblock %}
+{% block content %}
+<section class="planner-shell">
+  <div class="wrap narrow">
+    <a class="back-link" href="/dashboard">← Dashboard</a>
+    <span class="eyebrow">{{ kind|upper }} PLANNER</span>
+    <h1>{{ form.title }}</h1>
+    <p class="lead">{{ form.subtitle }}</p>
+    {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+    <form class="form-card" method="post" action="/generate-{{ kind }}" enctype="multipart/form-data" data-validate>
+      <fieldset class="field model-field">
+        <legend>AI model</legend>
+        <input type="hidden" name="ai_provider" value="{{ ai_provider }}" data-ai-provider>
+        <button class="button quiet model-switch" type="button" data-model-switch aria-live="polite">Change model · <span data-model-name>{{ "Gemini Flash" if ai_provider=='gemini' else "Groq" }}</span></button>
+        <small>Choose which AI model will create this plan.</small>
+      </fieldset>
+      {% for field,label,typ,opts in form.fields %}
+      <fieldset class="field">
+        {% if typ=='checks' %}
+        <legend>{{ label }}</legend>
+        <div class="check-grid">{% for choice in opts.split('|') %}<label class="check-option"><input type="checkbox" name="{{ 'rooms' if kind=='home' else 'needs' }}" value="{{ choice }}"><span>{{ choice }}</span></label>{% endfor %}</div>
+        {% elif typ=='select' %}
+        <label>{{ label }}<select name="{{ field }}" required><option value="">Select one</option>{% for choice in opts.split('|') %}<option>{{ choice }}</option>{% endfor %}</select></label>
+        {% elif typ=='textarea' %}
+        <label>{{ label }}<textarea name="{{ field }}" rows="4" maxlength="1000" placeholder="Share any details that will help shape your plan"></textarea></label>
+        {% else %}
+        <label>{{ label }}<input name="{{ field }}" type="{{ typ }}" {{ opts|safe }} {% if field=='budget' %}placeholder="e.g. 50000"{% endif %}></label>
+        {% endif %}
+      </fieldset>
+      {% endfor %}
+      {% if kind=='jewelry' %}
+      <fieldset class="field"><label for="outfit">Outfit image (optional)</label><input id="outfit" type="file" name="outfit_image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" data-image-upload><small>JPG, PNG or WEBP, up to 5 MB.</small><img class="image-preview" alt="Preview of selected outfit" hidden></fieldset>
+      {% endif %}
+      <div class="form-foot"><p>Prices are planning estimates, not live offers.</p><button class="button primary" type="submit">{{ "Get recommendations" if kind=='jewelry' else "Generate recommendations" }} <span>→</span></button></div>
+    </form>
+  </div>
+</section>
+{% endblock %}

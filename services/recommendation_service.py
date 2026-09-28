@@ -7,14 +7,14 @@ def money(v):
  except (InvalidOperation,ValueError,TypeError):raise ValueError("AI returned an invalid amount.")
  if not x.is_finite() or x<0:raise ValueError("AI returned an invalid amount.")
  return int(x.quantize(Decimal("1")))
-def make_plan(kind,data):
+def make_plan(kind,data,provider=None):
  budget=money(data["budget"])
  if os.getenv("MOCK_AI","false").lower()=="true":
   specs={"home":[("Lighting","LED lighting",.12),("Furniture","Multi-purpose furniture",.34),("Decor","Textiles and decor",.12)],"party":[("Catering","Seasonal catering menu",.38),("Decoration","Reusable venue decor",.16),("Entertainment","Local event entertainment",.12)],"jewelry":[("Necklace","Versatile coordinated necklace",.24),("Earrings","Occasion earrings",.18),("Bracelet","Matching bracelet",.12)]}
   result={"recommendations":[{"category":c,"item":i,"description":"A practical planning estimate based on your budget and preferences. Not a live price.","estimated_price":max(100,int(budget*f)),"quantity":1,"platform":"Amazon"} for c,i,f in specs[kind]],"additional_suggestions":["Compare current local prices before purchasing.","Keep a small contingency for delivery, taxes, or last-minute changes."]}
  else:
   prompt=f"Create a practical {kind} plan for this user input: {data}. Budget INR {budget}. Return JSON with recommendations list (category,item,description,estimated_price,quantity,platform), additional_suggestions list. Do not exceed budget. Estimates are not live prices."
-  result=generate_structured_response(prompt)
+  result=generate_structured_response(prompt,provider)
   if not isinstance(result,dict) or not isinstance(result.get("recommendations"),list):raise ValueError("AI response did not match the plan format.")
  rows=[]
  for r in result.get("recommendations",[]):

@@ -1,6 +1,6 @@
 ﻿# PocketSmart AI
 
-A responsive FastAPI application for budget planning across home interiors, parties, and jewelry. Accounts, planner inputs, and recommendations are stored in SQLite. Text recommendations use Groq when configured; deterministic local recommendations are available with `MOCK_AI=true` for development.
+A responsive FastAPI application for budget planning across home interiors, parties, and jewelry. Accounts, planner inputs, and recommendations are stored in SQLite. Text recommendations can use Groq or Gemini; deterministic local recommendations are available with `MOCK_AI=true` for development.
 
 ## Features
 - Registration, sign in/out, password hashing, JWT in an HTTP-only cookie, and safe session endpoints.
@@ -22,7 +22,7 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Set a strong random `SECRET_KEY`. Set `MOCK_AI=true` to run without an API key, or set `MOCK_AI=false` and supply `GROQ_API_KEY`. `GROQ_MODEL` selects the Groq model (default `openai/gpt-oss-120b`). Optional `DATABASE_URL` defaults to `sqlite:///./pocketsmart.db`; `ACCESS_TOKEN_EXPIRE_MINUTES`, `ALGORITHM`, and `MAX_UPLOAD_MB` tune auth and upload settings. Set `APP_ENV=production` to enforce a strong secret, configured Groq (unless mock mode is intentionally on), and secure cookies over HTTPS. Never commit `.env`.
+Set a strong random `SECRET_KEY`. Set `MOCK_AI=true` to run without an API key, or set `MOCK_AI=false` and supply `GROQ_API_KEY` and/or `GEMINI_API_KEY`. `AI_PROVIDER` chooses the initially selected provider (`groq` or `gemini`); the planner's **Change model** button switches providers per plan. `GROQ_MODEL` and `GEMINI_MODEL` set each provider's model (defaults `openai/gpt-oss-120b` and `gemini-3.8-flash`). Optional `DATABASE_URL` defaults to `sqlite:///./pocketsmart.db`; `ACCESS_TOKEN_EXPIRE_MINUTES`, `ALGORITHM`, and `MAX_UPLOAD_MB` tune auth and upload settings. Set `APP_ENV=production` to enforce a strong secret, at least one configured AI provider (unless mock mode is intentionally on), and secure cookies over HTTPS. Never commit `.env`.
 
 ```powershell
 uvicorn main:app --reload
@@ -49,10 +49,10 @@ SECRET_KEY=<a newly generated random secret of at least 32 characters>
 MOCK_AI=true
 ```
 
-For Groq generated recommendations, set `MOCK_AI=false` and add `GROQ_API_KEY` instead. The volume keeps the SQLite database and uploaded images across deployments. Keep API keys and secrets in Railway Variables, never in the repository.
+For AI generated recommendations, set `MOCK_AI=false` and add `GROQ_API_KEY`, `GEMINI_API_KEY`, or both. The volume keeps the SQLite database and uploaded images across deployments. Keep API keys and secrets in Railway Variables, never in the repository.
 
 ## AI, prices, and uploads
-Mock mode provides transparent planning examples generated locally so the interface can be exercised. With mock mode off, planner prompts go through the Groq SDK and must return structured JSON. The server validates prices/quantities, trims items if their combined estimate exceeds the submitted budget, and calculates totals in Python. Estimates are not live prices. Search buttons link to provider search pages; there are no product API integrations. Uploads are size limited, image-decoded, extension/type checked, named randomly, and saved under `uploads/`. Image vision is intentionally not simulated; outfit notes state when provider support is missing.
+Mock mode provides transparent planning examples generated locally so the interface can be exercised. With mock mode off, planner prompts go through the selected provider SDK and must return structured JSON. The server validates prices/quantities, trims items if their combined estimate exceeds the submitted budget, and calculates totals in Python. Estimates are not live prices. Search buttons link to provider search pages; there are no product API integrations. Uploads are size limited, image-decoded, extension/type checked, named randomly, and saved under `uploads/`. Image vision is intentionally not simulated; outfit notes state when provider support is missing.
 
 ## Tests
 
